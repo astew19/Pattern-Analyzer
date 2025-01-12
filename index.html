@@ -166,9 +166,29 @@
         const DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"];
         const SCOPES = 'https://www.googleapis.com/auth/drive.file';
 
-        function handleClientLoad() {
-            gapi.load('client:auth2', initClient);
+// Place the handleTranscriptUpload function here
+function handleTranscriptUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+        try {
+            const result = await mammoth.extractRawText({ arrayBuffer: e.target.result });
+            transcriptText = result.value;
+            document.getElementById('transcriptContent').innerText = transcriptText;
+            document.getElementById('analyzeBtn').disabled = false;
+        } catch (error) {
+            alert('Error reading transcript: ' + error.message);
         }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+// Then place handleClientLoad and other Google Drive functions after
+function handleClientLoad() {
+    gapi.load('client:auth2', initClient);
+}
 
         function initClient() {
             gapi.client.init({
