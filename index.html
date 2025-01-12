@@ -2,6 +2,7 @@
 <html>
 <head>
     <title>Customer Pattern Analyzer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -42,9 +43,14 @@
             border-radius: 4px;
             cursor: pointer;
             margin-right: 10px;
+            margin-bottom: 10px;
         }
         button:hover {
             background: #0052a3;
+        }
+        button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
         }
         .delete-btn {
             background: #dc3545;
@@ -77,6 +83,42 @@
             padding-top: 20px;
             border-top: 1px solid #ddd;
         }
+        .transcript-section {
+            margin-top: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .transcript-content {
+            max-height: 300px;
+            overflow-y: auto;
+            padding: 10px;
+            border: 1px solid #ddd;
+            margin-top: 10px;
+        }
+        #apiKeyModal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+        .modal-backdrop {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+        }
     </style>
 </head>
 <body>
@@ -87,6 +129,10 @@
             <button onclick="saveData()">Save Data</button>
             <button onclick="loadData()">Load Data</button>
             <input type="file" id="fileInput" style="display: none" onchange="handleFileSelect(event)">
+            <button onclick="document.getElementById('transcriptFile').click()">Upload Transcript</button>
+            <input type="file" id="transcriptFile" style="display: none" accept=".docx" onchange="handleTranscriptUpload(event)">
+            <button onclick="showApiKeyModal()">Set Claude API Key</button>
+            <button onclick="analyzeTranscript()" id="analyzeBtn" disabled>Analyze with Claude</button>
         </div>
 
         <div class="grid">
@@ -135,7 +181,22 @@
                 </div>
             </div>
         </div>
+
+        <!-- Transcript Section -->
+        <div class="transcript-section">
+            <h2>Transcript Content</h2>
+            <div id="transcriptContent" class="transcript-content"></div>
+        </div>
     </div>
+
+    <!-- API Key Modal -->
+    <div id="apiKeyModal">
+        <h3>Enter Claude API Key</h3>
+        <input type="password" id="apiKeyInput" placeholder="sk-...">
+        <button onclick="saveApiKey()">Save</button>
+        <button onclick="hideApiKeyModal()">Cancel</button>
+    </div>
+    <div id="modalBackdrop" class="modal-backdrop"></div>
 
     <script>
         // Store patterns in memory
@@ -146,6 +207,9 @@
             desire: []
         };
 
+        let transcriptText = '';
+        let apiKey = localStorage.getItem('claudeApiKey');
+
         function addPattern() {
             const category = document.getElementById('category').value;
             const description = document.getElementById('description').value;
@@ -153,18 +217,14 @@
 
             if (description.trim() === '') return;
 
-            // Add to patterns object with unique ID
             patterns[category].push({
-                id: Date.now(), // Use timestamp as unique ID
+                id: Date.now(),
                 description,
                 intensity,
                 timestamp: new Date().toISOString()
             });
 
-            // Update display
             updateDisplay();
-
-            // Clear input
             document.getElementById('description').value = '';
         }
 
@@ -174,7 +234,6 @@
         }
 
         function updateDisplay() {
-            // Update each category list
             Object.keys(patterns).forEach(category => {
                 const list = document.getElementById(`${category}List`);
                 list.innerHTML = '';
@@ -191,7 +250,6 @@
             });
         }
 
-        // Save data to file
         function saveData() {
             const dataStr = JSON.stringify(patterns, null, 2);
             const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
@@ -203,12 +261,10 @@
             linkElement.click();
         }
 
-        // Trigger file input for loading
         function loadData() {
             document.getElementById('fileInput').click();
         }
 
-        // Handle file selection
         function handleFileSelect(event) {
             const file = event.target.files[0];
             if (file) {
@@ -223,6 +279,103 @@
                     }
                 };
                 reader.readAsText(file);
+            }
+        }
+
+        async function handleTranscriptUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            try {
+                const result = await mammoth.convertToHtml({ arrayBuffer: await file.arrayBuffer() });
+                transcriptText = result.value;
+                document.getElementById('transcriptContent').innerHTML = transcriptText;
+                document.getElementById('analyzeBtn').disabled = false;
+            } catch (error) {
+                alert('Error reading transcript: ' + error.message);
+            }
+        }
+
+        function showApiKeyModal() {
+            document.getElementById('apiKeyModal').style.display = 'block';
+            document.getElementById('modalBackdrop').style.display = 'block';
+            if (apiKey) {
+                document.getElementById('apiKeyInput').value = apiKey;
+            }
+        }
+
+        function hideApiKeyModal() {
+            document.getElementById('apiKeyModal').style.display = 'none';
+            document.getElementById('modalBackdrop').style.display = 'none';
+        }
+
+        function saveApiKey() {
+            const key = document.getElementById('apiKeyInput').value;
+            if (key && key.startsWith('sk-')) {
+                apiKey = key;
+                localStorage.setItem('claudeApiKey', key);
+                hideApiKeyModal();
+            } else {
+                alert('Please enter a valid Claude API key');
+            }
+        }
+
+        async function analyzeTranscript() {
+            if (!apiKey) {
+                alert('Please set your Claude API key first');
+                showApiKeyModal();
+                return;
+            }
+
+            if (!transcriptText) {
+                alert('Please upload a transcript first');
+                return;
+            }
+
+            try {
+                const response = await fetch('https://api.anthropic.com/v1/messages', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': apiKey,
+                        'anthropic-version': '2023-06-01'
+                    },
+                    body: JSON.stringify({
+                        model: 'claude-3-sonnet-20240229',
+                        max_tokens: 4096,
+                        messages: [{
+                            role: 'user',
+                            content: `Analyze this customer interview transcript and identify key behaviors, triggers, pain points, and desired outcomes. Format your response as JSON with these categories. Transcript: ${transcriptText}`
+                        }]
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('API request failed');
+                }
+
+                const data = await response.json();
+                const analysis = JSON.parse(data.content[0].text);
+
+                // Add patterns from analysis
+                Object.keys(analysis).forEach(category => {
+                    if (patterns[category]) {
+                        analysis[category].forEach(item => {
+                            patterns[category].push({
+                                id: Date.now() + Math.random(),
+                                description: item.description,
+                                intensity: item.intensity || 'medium',
+                                timestamp: new Date().toISOString()
+                            });
+                        });
+                    }
+                });
+
+                updateDisplay();
+                alert('Transcript analysis complete!');
+
+            } catch (error) {
+                alert('Error analyzing transcript: ' + error.message);
             }
         }
 
