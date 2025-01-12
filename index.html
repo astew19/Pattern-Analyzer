@@ -41,23 +41,54 @@
             border: none;
             border-radius: 4px;
             cursor: pointer;
+            margin-right: 10px;
         }
         button:hover {
             background: #0052a3;
+        }
+        .delete-btn {
+            background: #dc3545;
+            color: white;
+            padding: 2px 8px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 10px;
+            font-size: 12px;
+        }
+        .delete-btn:hover {
+            background: #c82333;
         }
         .pattern-list {
             margin-top: 10px;
             padding-left: 20px;
         }
+        .pattern-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
         .intensity-high { color: #dc3545; }
         .intensity-medium { color: #ffc107; }
         .intensity-low { color: #28a745; }
+        .actions {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Customer Pattern Analyzer</h1>
         
+        <div class="actions">
+            <button onclick="saveData()">Save Data</button>
+            <button onclick="loadData()">Load Data</button>
+            <input type="file" id="fileInput" style="display: none" onchange="handleFileSelect(event)">
+        </div>
+
         <div class="grid">
             <!-- Input Section -->
             <div class="card">
@@ -122,8 +153,9 @@
 
             if (description.trim() === '') return;
 
-            // Add to patterns object
+            // Add to patterns object with unique ID
             patterns[category].push({
+                id: Date.now(), // Use timestamp as unique ID
                 description,
                 intensity,
                 timestamp: new Date().toISOString()
@@ -136,6 +168,11 @@
             document.getElementById('description').value = '';
         }
 
+        function deletePattern(category, id) {
+            patterns[category] = patterns[category].filter(pattern => pattern.id !== id);
+            updateDisplay();
+        }
+
         function updateDisplay() {
             // Update each category list
             Object.keys(patterns).forEach(category => {
@@ -144,17 +181,20 @@
                 
                 patterns[category].forEach(pattern => {
                     const li = document.createElement('li');
-                    li.innerHTML = `<span class="intensity-${pattern.intensity}">${pattern.description}</span>`;
+                    li.className = 'pattern-item';
+                    li.innerHTML = `
+                        <span class="intensity-${pattern.intensity}">${pattern.description}</span>
+                        <button class="delete-btn" onclick="deletePattern('${category}', ${pattern.id})">Delete</button>
+                    `;
                     list.appendChild(li);
                 });
             });
         }
 
-        // Export data function
-        function exportData() {
+        // Save data to file
+        function saveData() {
             const dataStr = JSON.stringify(patterns, null, 2);
             const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-            
             const exportFileDefaultName = 'customer_patterns.json';
 
             const linkElement = document.createElement('a');
@@ -162,6 +202,32 @@
             linkElement.setAttribute('download', exportFileDefaultName);
             linkElement.click();
         }
+
+        // Trigger file input for loading
+        function loadData() {
+            document.getElementById('fileInput').click();
+        }
+
+        // Handle file selection
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        patterns = JSON.parse(e.target.result);
+                        updateDisplay();
+                        alert('Data loaded successfully!');
+                    } catch (error) {
+                        alert('Error loading file: Invalid format');
+                    }
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        // Initialize display
+        updateDisplay();
     </script>
 </body>
 </html>
