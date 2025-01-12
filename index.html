@@ -17,7 +17,6 @@
             <input type="file" id="fileInput" style="display: none" onchange="handleFileSelect(event)">
             <button onclick="document.getElementById('transcriptFile').click()">Upload Transcript</button>
             <input type="file" id="transcriptFile" style="display: none" accept=".docx" onchange="handleTranscriptUpload(event)">
-            <button onclick="showApiKeyModal()">Set OpenAI API Key</button>
             <button onclick="analyzeTranscriptGPT()" id="analyzeBtn" disabled>Analyze with GPT</button>
         </div>
 
@@ -72,15 +71,6 @@
         </div>
     </div>
 
-    <!-- API Key Modal -->
-    <div id="apiKeyModal">
-        <h3>Enter OpenAI API Key</h3>
-        <input type="password" id="apiKeyInput" placeholder="sk-...">
-        <button onclick="saveApiKey()">Save</button>
-        <button onclick="hideApiKeyModal()">Cancel</button>
-    </div>
-    <div id="modalBackdrop" class="modal-backdrop"></div>
-
     <script>
         let patterns = {
             behavior: [],
@@ -90,15 +80,9 @@
         };
 
         let transcriptText = '';
-        let apiKey = localStorage.getItem('openaiApiKey');
+        const apiKey = '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'; // API key is hardcoded here
 
         async function analyzeTranscriptGPT() {
-            if (!apiKey) {
-                alert('Please set your OpenAI API key first');
-                showApiKeyModal();
-                return;
-            }
-
             if (!transcriptText) {
                 alert('Please upload a transcript first');
                 return;
@@ -146,27 +130,6 @@
             } catch (error) {
                 alert('Error analyzing transcript: ' + error.message);
             }
-        }
-
-        function saveApiKey() {
-            const key = document.getElementById('apiKeyInput').value;
-            if (key && key.startsWith('sk-')) {
-                apiKey = key;
-                localStorage.setItem('openaiApiKey', key);
-                hideApiKeyModal();
-            } else {
-                alert('Please enter a valid OpenAI API key');
-            }
-        }
-
-        function showApiKeyModal() {
-            document.getElementById('apiKeyModal').style.display = 'block';
-            document.getElementById('modalBackdrop').style.display = 'block';
-        }
-
-        function hideApiKeyModal() {
-            document.getElementById('apiKeyModal').style.display = 'none';
-            document.getElementById('modalBackdrop').style.display = 'none';
         }
 
         updateDisplay();
