@@ -159,12 +159,12 @@
 const API_KEY = 'AIzaSyANWsNDg3wr2tZQwjQYLCFkG2JUrv2Svx8';
 const DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"];
 const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets';
-const OPENAI_API_KEY = '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';
+const OPENAI_API_KEY = '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';
 
 let transcriptText = '';
 let patterns = {
-    behavior: [],
-    trigger: [],
+    behavior: [{"quote": "Example quote", "intensity": "high"}],
+    trigger: [{"quote": "Another quote", "intensity": "medium"}],
     painPoint: [],
     desire: []
 };
@@ -211,6 +211,19 @@ async function analyzeTranscriptGPT() {
         alert('Please upload a transcript first');
         return;
     }
+// ✅ Update the Display Section with GPT Results
+function updateDisplay() {
+    Object.keys(patterns).forEach(category => {
+        const listElement = document.getElementById(`${category}List`);
+        listElement.innerHTML = ''; // Clear previous entries
+        
+        patterns[category].forEach(item => {
+            const li = document.createElement('li');
+            li.innerHTML = `<strong>Quote:</strong> ${item.quote} <br><strong>Intensity:</strong> ${item.intensity}`;
+            listElement.appendChild(li);
+        });
+    });
+}
 
     try {
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
