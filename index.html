@@ -211,6 +211,34 @@ async function analyzeTranscriptGPT() {
         alert('Please upload a transcript first');
         return;
     }
+
+    try {
+        const response = await fetch('/api/analyze', {  
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ transcriptText })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            alert(`Error: ${errorData.error}`);
+            return;
+        }
+
+        const result = await response.json();
+        const analysis = JSON.parse(result.choices[0].message.content);
+        patterns = analysis;
+        updateDisplay();
+        await createGoogleSheet(analysis);
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error analyzing transcript.');
+    }
+}
+
+    }
 // ✅ Update the Display Section with GPT Results
 function updateDisplay() {
     Object.keys(patterns).forEach(category => {
